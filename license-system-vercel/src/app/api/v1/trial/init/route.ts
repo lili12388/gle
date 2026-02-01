@@ -3,6 +3,23 @@ import { db, generateId } from '@/lib/db'
 
 const FREE_LEAD_LIMIT = 50
 
+// Get country from IP using free API
+async function getCountryFromIP(ip: string): Promise<string | null> {
+  if (!ip || ip === 'unknown') return null
+  try {
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=country,countryCode`, {
+      signal: AbortSignal.timeout(2000) // 2 second timeout
+    })
+    if (response.ok) {
+      const data = await response.json()
+      return data.countryCode || data.country || null
+    }
+  } catch (e) {
+    // Silently fail - country is optional
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -18,6 +35,9 @@ export async function POST(request: NextRequest) {
       || request.headers.get('x-real-ip')
       || 'unknown'
 
+    // Get country from IP (async, but don't block on failure)
+    const country = await getCountryFromIP(ip)
+
     const existing = await db.execute(
       `SELECT * FROM extension_trials WHERE fingerprint_hash = ?`,
       [fingerprint_hash]
@@ -28,8 +48,8 @@ export async function POST(request: NextRequest) {
       await db.execute(
         `INSERT INTO extension_trials (
           id, fingerprint_hash, fingerprint_components, extension_id,
-          leads_used, max_leads, is_locked, last_ip, client_browser, client_os, client_timezone
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          leads_used, max_leads, is_locked, last_ip, country, client_browser, client_os, client_timezone
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           fingerprint_hash,
@@ -39,6 +59,7 @@ export async function POST(request: NextRequest) {
           FREE_LEAD_LIMIT,
           0,
           ip,
+          country,
           client?.browser || null,
           client?.os || null,
           client?.timezone || null,
@@ -63,6 +84,7 @@ export async function POST(request: NextRequest) {
       `UPDATE extension_trials 
        SET last_seen_at = datetime('now'),
            last_ip = ?,
+           country = COALESCE(?, country),
            client_browser = COALESCE(?, client_browser),
            client_os = COALESCE(?, client_os),
            client_timezone = COALESCE(?, client_timezone),
@@ -70,6 +92,7 @@ export async function POST(request: NextRequest) {
        WHERE fingerprint_hash = ?`,
       [
         ip,
+        country,
         client?.browser || null,
         client?.os || null,
         client?.timezone || null,

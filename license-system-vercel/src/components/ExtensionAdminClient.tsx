@@ -29,6 +29,7 @@ interface ExtensionTrial {
   first_seen_at: string;
   last_seen_at: string;
   last_ip?: string;
+  country?: string;
   client_browser?: string;
   client_os?: string;
   client_timezone?: string;
@@ -412,13 +413,14 @@ export default function ExtensionAdminClient({ initialLicenses = [], token }: { 
                 <th style={{ padding: '12px 14px', color: '#6b7280', fontWeight: 600 }}>Leads Used</th>
                 <th style={{ padding: '12px 14px', color: '#6b7280', fontWeight: 600 }}>Status</th>
                 <th style={{ padding: '12px 14px', color: '#6b7280', fontWeight: 600 }}>Last Seen</th>
+                <th style={{ padding: '12px 14px', color: '#6b7280', fontWeight: 600 }}>Country</th>
                 <th style={{ padding: '12px 14px', color: '#6b7280', fontWeight: 600 }}>IP</th>
                 <th style={{ padding: '12px 14px', color: '#6b7280', fontWeight: 600, textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {trials.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>No trial users tracked yet.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#9ca3af' }}>No trial users tracked yet.</td></tr>
               )}
               {trials.map((trial, index) => {
                 const isLocked = trial.is_locked === 1 || trial.leads_used >= trial.max_leads;
@@ -453,6 +455,21 @@ export default function ExtensionAdminClient({ initialLicenses = [], token }: { 
                       )}
                     </td>
                     <td style={{ padding: '10px 14px', color: '#4b5563', fontSize: 11 }}>{fmtDate(trial.last_seen_at)}</td>
+                    <td style={{ padding: '10px 14px', fontSize: 12, fontWeight: 500 }}>
+                      {trial.country ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                          <img 
+                            src={`https://flagcdn.com/16x12/${trial.country.toLowerCase()}.png`} 
+                            alt={trial.country}
+                            style={{ width: 16, height: 12, borderRadius: 2 }}
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          {trial.country}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>-</span>
+                      )}
+                    </td>
                     <td style={{ padding: '10px 14px', fontSize: 11, fontFamily: 'monospace', color: '#6b7280' }}>{trial.last_ip || '-'}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
