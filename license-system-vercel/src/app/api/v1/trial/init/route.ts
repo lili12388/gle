@@ -3,6 +3,18 @@ import { db, generateId } from '@/lib/db'
 
 const FREE_LEAD_LIMIT = 50
 
+// CORS headers for browser extension
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
+// Handle preflight OPTIONS request
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 200, headers: corsHeaders })
+}
+
 // Get country from IP using free API
 async function getCountryFromIP(ip: string): Promise<string | null> {
   if (!ip || ip === 'unknown') return null
@@ -28,7 +40,7 @@ export async function POST(request: NextRequest) {
     const { fingerprint_components, extension_id, client } = body || {}
 
     if (!fingerprint_hash || typeof fingerprint_hash !== 'string' || fingerprint_hash.length < 8) {
-      return NextResponse.json({ ok: false, error: 'Invalid fingerprint' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'Invalid fingerprint' }, { status: 400, headers: corsHeaders })
     }
 
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest) {
         leadsRemaining: FREE_LEAD_LIMIT,
         leadsTotal: FREE_LEAD_LIMIT,
         isLocked: false,
-      })
+      }, { headers: corsHeaders })
     }
 
     const trial = existing.rows[0] as any
@@ -108,10 +120,10 @@ export async function POST(request: NextRequest) {
       leadsRemaining: Math.max(0, maxLeads - leadsUsed),
       leadsTotal: maxLeads,
       isLocked,
-    })
+    }, { headers: corsHeaders })
   } catch (error) {
     console.error('Trial init error:', error)
-    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500, headers: corsHeaders })
   }
 }
 
@@ -119,7 +131,7 @@ export async function GET(request: NextRequest) {
   try {
     const fingerprint_hash = request.nextUrl.searchParams.get('fingerprint_hash')
     if (!fingerprint_hash || fingerprint_hash.length < 8) {
-      return NextResponse.json({ ok: false, error: 'Invalid fingerprint' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'Invalid fingerprint' }, { status: 400, headers: corsHeaders })
     }
 
     const existing = await db.execute(
@@ -134,7 +146,7 @@ export async function GET(request: NextRequest) {
         leadsRemaining: FREE_LEAD_LIMIT,
         leadsTotal: FREE_LEAD_LIMIT,
         isLocked: false,
-      })
+      }, { headers: corsHeaders })
     }
 
     const trial = existing.rows[0] as any
@@ -150,9 +162,9 @@ export async function GET(request: NextRequest) {
       leadsTotal: maxLeads,
       isLocked,
       createdAt: trial.created_at,
-    })
+    }, { headers: corsHeaders })
   } catch (error) {
     console.error('Trial status error:', error)
-    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500, headers: corsHeaders })
   }
 }

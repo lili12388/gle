@@ -3,6 +3,18 @@ import { db, generateId } from '@/lib/db'
 
 const FREE_LEAD_LIMIT = 50
 
+// CORS headers for browser extension
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
+// Handle preflight OPTIONS request
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 200, headers: corsHeaders })
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -11,12 +23,12 @@ export async function POST(request: NextRequest) {
     const { leadsCount } = body || {}
 
     if (!fingerprint_hash || typeof fingerprint_hash !== 'string' || fingerprint_hash.length < 8) {
-      return NextResponse.json({ ok: false, error: 'Invalid fingerprint' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'Invalid fingerprint' }, { status: 400, headers: corsHeaders })
     }
 
     const count = Number(leadsCount)
     if (!Number.isFinite(count) || count < 1 || count > 100) {
-      return NextResponse.json({ ok: false, error: 'Invalid leads count (1-100)' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'Invalid leads count (1-100)' }, { status: 400, headers: corsHeaders })
     }
 
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
@@ -47,7 +59,7 @@ export async function POST(request: NextRequest) {
         leadsRemaining: Math.max(0, FREE_LEAD_LIMIT - initialUsed),
         leadsTotal: FREE_LEAD_LIMIT,
         isLocked,
-      })
+      }, { headers: corsHeaders })
     }
 
     const trial = existing.rows[0] as any
@@ -62,7 +74,7 @@ export async function POST(request: NextRequest) {
         leadsRemaining: 0,
         leadsTotal: maxLeads,
         isLocked: true,
-      })
+      }, { headers: corsHeaders })
     }
 
     const available = Math.max(0, maxLeads - leadsUsed)
@@ -88,9 +100,9 @@ export async function POST(request: NextRequest) {
       ...(Math.max(0, maxLeads - newUsed) <= 10 && !lockedNow && {
         warning: `Only ${Math.max(0, maxLeads - newUsed)} free leads remaining!`
       }),
-    })
+    }, { headers: corsHeaders })
   } catch (error) {
     console.error('Trial consume error:', error)
-    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500 })
+    return NextResponse.json({ ok: false, error: 'Server error' }, { status: 500, headers: corsHeaders })
   }
 }
